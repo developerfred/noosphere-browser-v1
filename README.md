@@ -17,13 +17,26 @@ Noosphere transforms the web from visual pages into a **knowledge graph**. Inste
 
 ## 🚀 Quick Start
 
-### Install (Linux/macOS)
+### Pre-built Binaries (Recommended)
+
+Download from [Releases](https://github.com/developerfred/noosphere-browser-v1/releases):
+
+| Platform | Binary |
+|----------|--------|
+| Linux x86_64 | `noosphere-x86_64-linux` |
+| Linux ARM64 (Pi 4) | `noosphere-aarch64-linux` |
+| macOS Intel | `noosphere-x86_64-macos` |
+| macOS Apple Silicon | `noosphere-aarch64-macos` |
+| Windows | `noosphere-x86_64-windows.exe` |
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/developerfred/noosphere-browser-v1/master/install.sh | bash
+# Download and run
+curl -L -o noosphere https://github.com/developerfred/noosphere-browser-v1/releases/latest/download/noosphere-ARCH
+chmod +x noosphere
+./noosphere --help
 ```
 
-### Or Build from Source
+### Build from Source (Zig)
 
 **Requirements:**
 - [Zig 0.13+](https://ziglang.org/download/)
@@ -42,6 +55,29 @@ make build-linux-arm64
 # Build ALL platforms
 make build-all
 ```
+
+### Build from Source (C Fallback)
+
+If Zig is not available, the C fallback can be compiled with gcc/clang:
+
+```bash
+# Clone
+git clone https://github.com/developerfred/noosphere-browser-v1.git
+cd noosphere-browser-v1
+
+# Compile C fallback
+gcc -O2 -o noosphere_c c/main.c
+
+# Run
+./noosphere_c --help
+```
+
+The C version includes:
+- ✅ URL validation (blocks javascript:, data:, file:, ftp:)
+- ✅ Rate limiting (10/s, 100/m, 1000/h)
+- ✅ Entity extraction
+- ✅ HTML to text conversion
+- ✅ JSON storage ready
 
 ### Usage
 
