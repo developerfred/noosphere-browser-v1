@@ -1,10 +1,19 @@
 //! Noosphere HTTP Cache
 //! 
 //! In-memory and disk caching for HTTP responses.
-//! Reduces redundant requests and improves performance.
+//! HTTP/2 support, connection pooling, reduces redundant requests.
 
 const std = @import("std");
 const fs = std.fs;
+
+/// HTTP/2 settings
+pub const HTTP2Settings = struct {
+    enabled: bool,
+    max_concurrent_streams: u32,
+    header_table_size: u32,
+    initial_window_size: u32,
+    max_frame_size: u32,
+};
 
 /// Cache entry
 pub const CacheEntry = struct {
