@@ -1,6 +1,6 @@
 # 🌐 Noosphere Browser
 
-> Semantic-native browser for agents. Built for Raspberry Pi.
+> Semantic-native browser for AI agents. Built for Raspberry Pi.
 
 **Multi-platform**: Linux (x86_64, ARM), macOS (Intel, Apple Silicon), Windows
 
@@ -14,6 +14,28 @@ Noosphere transforms the web from visual pages into a **knowledge graph**. Inste
 - **Entities** (persons, organizations, locations, URLs, dates, numbers)
 - **Relations** (subject-predicate-object triples)
 - **Content** (clean Markdown)
+
+## ✨ Features
+
+### Core
+- 🌐 HTTP fetching with URL validation
+- 📄 HTML to Markdown conversion
+- 🧠 Entity extraction (PERSON, ORG, LOCATION, URL, DATE, QUANTITY)
+- 🔗 Relation detection
+- 💾 Local JSON storage
+- 🔒 Rate limiting & access control
+
+### Research (v1.1)
+- 📚 **ArXiv integration** - Search and fetch research papers
+- 📊 **Table extraction** - HTML tables to CSV/JSON/Markdown
+- 📝 **Citation graph** - Build academic citation networks
+- 🗺️ **Sitemap discovery** - Find all pages on a domain
+- 📡 **RSS/Atom feeds** - Parse content feeds
+
+### RAG (v1.2)
+- 📦 **Text chunking** - Semantic, fixed, sentence-based
+- 🔍 **API discovery** - Find hidden REST/GraphQL APIs
+- 🗄️ **Archive access** - Wayback Machine fallback
 
 ## 🚀 Quick Start
 
