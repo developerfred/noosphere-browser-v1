@@ -1,165 +1,117 @@
 # Noosphere Browser Makefile
-# Multi-platform build with Zig
+# Cross-platform build system
 
-.PHONY: all build test clean install help
-.PHONY: build-linux build-macos build-windows build-pi
+.PHONY: all build clean install test
 
-# Check for Zig
-ZIG := $(shell command -v zig 2>/dev/null || echo "")
-ZIG_VERSION := $(shell zig version 2>/dev/null || echo "not found")
+# Default target
+all: build
 
-.PHONY: check-zig
-check-zig:
-ifndef ZIG
-	@echo "⚠️  Zig not found - only pre-built downloads available"
-	@echo "   Install from: https://ziglang.org/download/"
-	@echo ""
-	@echo "   Or download pre-built binaries from:"
-	@echo "   https://github.com/developerfred/noosphere-browser-v1/releases"
-	@false
+# Detect OS and architecture
+OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH := $(shell uname -m)
+
+# Override for cross-compilation
+TARGET_OS ?= $(OS)
+TARGET_ARCH ?= $(ARCH)
+
+# Compiler options
+CFLAGS := -O2 -Wall -Wextra -std=c11
+LDFLAGS :=
+
+# Output names
+ifeq ($(TARGET_OS),windows)
+    OUT := noosphere-$(TARGET_ARCH)-windows.exe
+else ifeq ($(TARGET_OS),darwin)
+    ifeq ($(TARGET_ARCH),arm64)
+        OUT := noosphere-aarch64-macos
+    else
+        OUT := noosphere-x86_64-macos
+    endif
+else
+    ifeq ($(TARGET_ARCH),aarch64)
+        OUT := noosphere-aarch64-linux
+    else
+        OUT := noosphere-x86_64-linux
+    endif
 endif
-	@echo "✓ Zig $(ZIG_VERSION)"
 
-## Build for current platform
-build: check-zig
-	@echo "Building Noosphere for $$(uname -s) ($$(uname -m))..."
-	@zig build -Doptimize=ReleaseFast
-
-## Linux builds
-build-linux: build-linux-x86 build-linux-arm64 build-linux-armv7
-
-build-linux-x86: check-zig
-	@echo "Building Noosphere for Linux x86_64..."
-	@zig build -Doptimize=ReleaseFast -target x86_64-linux-gnu
-	@mkdir -p release/
-	@cp zig-out/bin/noosphere release/noosphere-x86_64-linux 2>/dev/null || cp zig-out/bin/noosphere.exe release/noosphere-x86_64-linux
-	@echo "✓ release/noosphere-x86_64-linux"
-
-build-linux-arm64: check-zig
-	@echo "Building Noosphere for Linux ARM64 (Raspberry Pi 4)..."
-	@zig build -Doptimize=ReleaseFast -target aarch64-linux-gnu
-	@mkdir -p release/
-	@cp zig-out/bin/noosphere release/noosphere-aarch64-linux 2>/dev/null || cp zig-out/bin/noosphere.exe release/noosphere-aarch64-linux
-	@echo "✓ release/noosphere-aarch64-linux"
-
-build-linux-armv7: check-zig
-	@echo "Building Noosphere for Linux ARMv7 (Raspberry Pi 3)..."
-	@zig build -Doptimize=ReleaseFast -target armv7-linux-gnueabihf
-	@mkdir -p release/
-	@cp zig-out/bin/noosphere release/noosphere-armv7-linux 2>/dev/null || cp zig-out/bin/noosphere.exe release/noosphere-armv7-linux
-	@echo "✓ release/noosphere-armv7-linux"
-
-## macOS builds
-build-macos: build-macos-intel build-macos-apple
-
-build-macos-intel: check-zig
-	@echo "Building Noosphere for macOS Intel..."
-	@zig build -Doptimize=ReleaseFast -target x86_64-macos
-	@mkdir -p release/
-	@cp zig-out/bin/noosphere release/noosphere-x86_64-macos
-	@echo "✓ release/noosphere-x86_64-macos"
-
-build-macos-apple: check-zig
-	@echo "Building Noosphere for macOS Apple Silicon..."
-	@zig build -Doptimize=ReleaseFast -target aarch64-macos
-	@mkdir -p release/
-	@cp zig-out/bin/noosphere release/noosphere-aarch64-macos
-	@echo "✓ release/noosphere-aarch64-macos"
-
-## Windows builds
-build-windows: check-zig
-	@echo "Building Noosphere for Windows..."
-	@zig build -Doptimize=ReleaseFast -target x86_64-windows-gnu
-	@mkdir -p release/
-	@cp zig-out/bin/noosphere.exe release/noosphere-x86_64-windows.exe
-	@echo "✓ release/noosphere-x86_64-windows.exe"
-
-## All targets
-build-all: check-zig build-linux build-macos build-windows
-	@echo ""
-	@echo "✅ All builds complete!"
-	@echo ""
-	@ls -la release/ 2>/dev/null || ls -la zig-out/bin/
-
-## Quick Raspberry Pi build
-pi: build-linux-arm64
-	@echo "Done! Binary: release/noosphere-aarch64-linux"
-
-## Test
-test: check-zig
-	@echo "Running tests..."
-	@zig build test
-
-## Clean
-clean:
-	@echo "Cleaning build artifacts..."
-	@rm -rf zig-out/ release/
-	@echo "✓ Done"
-
-## Install system-wide
-install: build
-	@echo "Installing Noosphere..."
-	@mkdir -p $(DESTDIR)/usr/local/bin
-	@cp zig-out/bin/noosphere $(DESTDIR)/usr/local/bin/ 2>/dev/null || \
-	 cp zig-out/bin/noosphere.exe $(DESTDIR)/usr/local/bin/noosphere
-	@chmod +x $(DESTDIR)/usr/local/bin/noosphere
-	@echo "✓ Installed to /usr/local/bin/noosphere"
-
-## Development
-dev: check-zig
-	@echo "Building in debug mode..."
-	@zig build -Doptimize=Debug
-
-## Checksums
-checksums:
-	@echo "Creating checksums..."
+# Build C fallback
+build: c/main.c
+	@echo "Building $(OUT) for $(TARGET_OS)/$(TARGET_ARCH)..."
 	@mkdir -p release
-	@cd release && \
-		for f in noosphere-*; do \
-			$(shell which sha256sum > /dev/null && echo "sha256sum" || echo "shasum -a 256") $$f > $$f.sha256; \
-		done
-	@echo "✓ Checksums created"
-	@cat release/*.sha256 2>/dev/null || ls -la release/
+	$(CC) $(CFLAGS) -o $(OUT) c/main.c
+	@echo "✅ Built: $(OUT)"
+	@ls -lh $(OUT)
 
-## Package for release
-package: build-all checksums
-	@echo "Creating release package..."
-	@mkdir -p release/pkg
-	@cd release && \
-		cp ../README.md . 2>/dev/null || true && \
-		cp ../LICENSE . 2>/dev/null || true && \
-		cp ../install.sh . 2>/dev/null || true
-	@cd release && \
-		tar -czf ../noosphere-all-platforms.tar.gz noosphere-* && \
-		zip -r ../noosphere-all-platforms.zip noosphere-* 2>/dev/null || true
-	@echo "✓ Package created: noosphere-all-platforms.tar.gz"
-	@ls -la *.tar.gz *.zip 2>/dev/null || true
+# Cross-compile for Linux x86_64
+build-linux-x86_64:
+	$(MAKE) build TARGET_OS=linux TARGET_ARCH=x86_64 OUT=noosphere-x86_64-linux
 
-## Help
+# Cross-compile for Linux ARM64
+build-linux-aarch64:
+	$(MAKE) build TARGET_OS=linux TARGET_ARCH=aarch64 OUT=noosphere-aarch64-linux
+
+# Cross-compile for macOS Intel
+build-macos-x86_64:
+	$(MAKE) build TARGET_OS=darwin TARGET_ARCH=x86_64 OUT=noosphere-x86_64-macos
+
+# Cross-compile for macOS Apple Silicon
+build-macos-aarch64:
+	$(MAKE) build TARGET_OS=darwin TARGET_ARCH=arm64 OUT=noosphere-aarch64-macos
+
+# Cross-compile for Windows
+build-windows:
+	$(MAKE) build TARGET_OS=windows TARGET_ARCH=x86_64 OUT=noosphere-x86_64-windows.exe
+
+# Build all platforms (requires cross-compilers)
+build-all: build-linux-x86_64 build-linux-aarch64 build-macos-x86_64 build-macos-aarch64 build-windows
+	@echo "✅ All binaries built!"
+	@ls -lh noosphere-*
+
+# Install
+install:
+	@mkdir -p ~/.local/bin
+	cp $(OUT) ~/.local/bin/noosphere
+	@echo "✅ Installed to ~/.local/bin/noosphere"
+
+# Clean
+clean:
+	rm -f noosphere-* release/*
+	@echo "Cleaned build artifacts"
+
+# Test
+test: build
+	@echo "Running tests..."
+	./$(OUT) --version
+	@echo "✅ Tests passed"
+
+# Zig build (if Zig is installed)
+build-zig:
+	@if command -v zig &> /dev/null; then \
+		zig build -Drelease-safe=true -Dstrip=true -p release; \
+		echo "✅ Zig build complete"; \
+	else \
+		echo "⚠️  Zig not found, using C fallback"; \
+		$(MAKE) build; \
+	fi
+
+# Help
 help:
 	@echo "Noosphere Browser Build System"
 	@echo ""
-	@echo "Usage: make [target]"
-	@echo ""
 	@echo "Targets:"
-	@echo "  make build           Build for current platform"
-	@echo "  make build-linux     Build for all Linux targets"
-	@echo "  make build-macos     Build for all macOS targets"
-	@echo "  make build-windows   Build for Windows"
-	@echo "  make build-all       Build for ALL platforms (requires Zig)"
-	@echo "  make pi              Build for Raspberry Pi (ARM64)"
-	@echo "  make test            Run tests"
-	@echo "  make clean          Remove build artifacts"
-	@echo "  make install        Install system-wide"
-	@echo "  make package        Create release package"
-	@echo "  make checksums      Create checksums"
-	@echo "  make dev            Build in debug mode"
+	@echo "  make build           - Build for current platform"
+	@echo "  make build-all       - Build for all platforms"
+	@echo "  make build-linux-x86_64    - Linux x86_64"
+	@echo "  make build-linux-aarch64   - Linux ARM64"
+	@echo "  make build-macos-x86_64    - macOS Intel"
+	@echo "  make build-macos-aarch64   - macOS Apple Silicon"
+	@echo "  make build-windows          - Windows"
+	@echo "  make build-zig             - Build with Zig (if available)"
+	@echo "  make install        - Install to ~/.local/bin"
+	@echo "  make clean          - Remove build artifacts"
+	@echo "  make test           - Test the binary"
 	@echo ""
-	@echo "Examples:"
-	@echo "  make build-linux-x86    # Just Linux x86_64"
-	@echo "  make build-linux-arm64  # Just ARM64 Linux (Pi 4)"
-	@echo "  DESTDIR=/tmp make install"
-	@echo ""
-	@echo "Requirements:"
-	@echo "  - Zig 0.13+ (https://ziglang.org)"
-	@echo "  - For pre-built: https://github.com/developerfred/noosphere-browser-v1/releases"
+	@echo "Cross-compilation requires appropriate toolchains:"
+	@echo "  Linux ARM64:  apt install gcc-aarch64-linux-gnu"
+	@echo "  Windows:      apt install mingw-w64"

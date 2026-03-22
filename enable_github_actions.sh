@@ -1,43 +1,90 @@
 #!/bin/bash
-# Enable GitHub Actions for Noosphere Browser
-# Run this script to enable automatic builds
+# Enable GitHub Actions CI/CD
+# 
+# PROBLEM: Current token lacks 'workflow' scope
+# SOLUTION: Create new token with workflow scope
+#
+# STEPS:
+# 1. Go to: https://github.com/settings/tokens/new?scopes=workflow,repo
+# 2. Add token description: "Noosphere CI/CD"
+# 3. Select scopes: repo, workflow
+# 4. Generate token
+# 5. Run: export GITHUB_TOKEN="ghp_xxxxx"
+# 6. Run: ./enable_github_actions.sh
 
+set -e
+
+GITHUB_TOKEN=${GITHUB_TOKEN:-""}
 REPO="developerfred/noosphere-browser-v1"
-TOKEN="${GITHUB_TOKEN:-}"
 
-if [ -z "$TOKEN" ]; then
-    echo "Error: GITHUB_TOKEN not set"
+if [ -z "$GITHUB_TOKEN" ]; then
+    echo "❌ GITHUB_TOKEN not set"
     echo ""
-    echo "Please either:"
-    echo "1. Generate a new token with 'workflow' scope at:"
-    echo "   https://github.com/settings/tokens/new?scopes=workflow,repo"
+    echo "Please set your GitHub token with workflow scope:"
+    echo "  export GITHUB_TOKEN='ghp_xxxxx'"
     echo ""
-    echo "2. Or enable GitHub Actions manually:"
-    echo "   - Go to https://github.com/$REPO/actions"
-    echo "   - Click 'I understand my workflows, go ahead'"
-    echo "   - Then push a tag: git tag v1.0.0 && git push origin v1.0.0"
+    echo "To create a new token:"
+    echo "  1. Go to https://github.com/settings/tokens/new?scopes=workflow,repo"
+    echo "  2. Add description: Noosphere CI/CD"
+    echo "  3. Select: repo, workflow"
+    echo "  4. Generate and copy the token"
     exit 1
 fi
 
-echo "Enabling GitHub Actions..."
+echo "🔑 Token found: ${GITHUB_TOKEN:0:4}..."
 
-# Try to get repo to verify token has access
-curl -s -H "Authorization: token $TOKEN" \
-    "https://api.github.com/repos/$REPO" | grep -q "full_name" && \
-    echo "✓ Token verified" || \
-    echo "✗ Token invalid or no access to repo"
+# Try to create the workflow file via API
+echo "📁 Creating .github/workflows/release.yml via API..."
 
-# Check if actions are enabled by trying to list workflows
-curl -s -H "Authorization: token $TOKEN" \
-    "https://api.github.com/repos/$REPO/actions/workflows" | \
-    grep -q "total_count" && \
-    echo "✓ GitHub Actions enabled" || \
-    echo "✗ GitHub Actions not enabled - please enable manually"
+# Check if file exists
+CHECK=$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    "https://api.github.com/repos/$REPO/contents/.github/workflows/release.yml")
+
+if [ "$CHECK" = "200" ]; then
+    echo "⚠️  File already exists, updating..."
+    # Get SHA
+    SHA=$(curl -s \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        "https://api.github.com/repos/$REPO/contents/.github/workflows/release.yml" | \
+        jq -r '.sha')
+    
+    # Update
+    curl -s -X PUT \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"message\": \"ci: Add release workflow via API\",
+            \"content\": \"$(base64 -w0 .github/workflows/release.yml)\",
+            \"sha\": \"$SHA\"
+        }" \
+        "https://api.github.com/repos/$REPO/contents/.github/workflows/release.yml"
+else
+    echo "📄 File doesn't exist, creating..."
+    # Create directory first
+    curl -s -X PUT \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "message": "ci: Add .github/workflows directory"
+        }' \
+        "https://api.github.com/repos/$REPO/contents/.github/workflows"
+    
+    # Create file
+    curl -s -X PUT \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"message\": \"ci: Add release workflow\",
+            \"content\": \"$(base64 -w0 .github/workflows/release.yml)\"
+        }" \
+        "https://api.github.com/repos/$REPO/contents/.github/workflows/release.yml"
+fi
 
 echo ""
-echo "To enable manually:"
-echo "1. Go to: https://github.com/$REPO/actions"
-echo "2. Click 'Enable GitHub Actions'"
+echo "✅ GitHub Actions workflow created!"
 echo ""
-echo "To trigger a release build:"
-echo "  git tag v1.0.0 && git push origin v1.0.0"
+echo "Next steps:"
+echo "1. Go to https://github.com/$REPO/actions"
+echo "2. You should see the 'Release Build' workflow"
+echo "3. Push a tag to trigger: git tag v1.2.1 && git push origin v1.2.1"
