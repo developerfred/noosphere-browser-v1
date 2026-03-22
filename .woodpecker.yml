@@ -1,0 +1,78 @@
+# Codeberg Woodpecker CI
+# Builds binaries for all platforms
+
+pipeline:
+  build-linux-x86:
+    image: alpine:latest
+    commands:
+      - apk add --no-cache gcc musl-dev make
+      - gcc -O2 -o noosphere-x86_64-linux c/main.c
+      - chmod +x noosphere-x86_64-linux
+      - ls -la noosphere-x86_64-linux
+    when:
+      - event: push
+      - event: tag
+
+  build-linux-arm:
+    image: alpine:latest
+    commands:
+      - apk add --no-cache gcc musl-dev make
+      - gcc -O2 -o noosphere-aarch64-linux c/main.c
+      - chmod +x noosphere-aarch64-linux
+      - ls -la noosphere-aarch64-linux
+    when:
+      - event: push
+      - event: tag
+
+  build-macos:
+    image: macos:latest
+    commands:
+      - gcc -O2 -o noosphere-universal c/main.c
+      - chmod +x noosphere-universal
+      - ls -la noosphere-universal
+    when:
+      - event: push
+      - event: tag
+
+  build-windows:
+    image: alpine:latest
+    commands:
+      - apk add --no-cache mingw64-gcc
+      - x86_64-w64-mingw32-gcc -O2 -o noosphere-x86_64-windows.exe c/main.c
+      - ls -la noosphere-x86_64-windows.exe
+    when:
+      - event: push
+      - event: tag
+
+  release:
+    image: alpine:latest
+    commands:
+      - apk add --no-cache curl jq
+      - |
+        # Create release info
+        VERSION=${CI_COMMIT_TAG:-latest}
+        echo "Creating release for $VERSION"
+        
+        # Upload each binary
+        for binary in noosphere-*-*; do
+          if [ -f "$binary" ]; then
+            echo "Would upload: $binary"
+            # Codeberg release upload via API
+          fi
+        done
+    secrets: [codespace_token]
+    when:
+      - event: tag
+
+  discord通知:
+    image: alpine:latest
+    commands:
+      - apk add --no-cache curl
+      - |
+        if [ -n "$DISCORD_WEBHOOK" ]; then
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\":\"🔮 Noosphere v${CI_COMMIT_TAG:-latest} build complete!\"}" \
+            "$DISCORD_WEBHOOK"
+        fi
+    when:
+      - event: tag
