@@ -1,11 +1,14 @@
 //! Noosphere Browser - Semantic-native browser for agents
 //! 
 //! For Raspberry Pi and edge devices. Pure Zig, no dependencies.
+//! Security: URL validation, rate limiting, access control
 
 const std = @import("std");
 const http = @import("http.zig");
 const parser = @import("parser.zig");
 const store = @import("store.zig");
+const ratelimit = @import("ratelimit.zig");
+const access = @import("access.zig");
 
 pub fn main() !void {
     std.log.info("🌐 Noosphere Browser v0.1.0", .{});

@@ -145,6 +145,21 @@ noosphere-browser/
 └── LICENSE
 ```
 
+## Security
+
+| Feature | Status |
+|---------|--------|
+| URL Validation | ✅ Blocked: javascript:, data:, file:, ftp: |
+| URL Length Limits | ✅ Host: 253, Path: 2048 |
+| HTTPS Enforcement | ✅ HTTP warns for non-localhost |
+| Rate Limiting | ✅ Configurable per second/minute/hour |
+| Access Control | ✅ ACL-based read/write/admin |
+| HTML Sanitization | ✅ Extension escapes all extracted content |
+| XSS Prevention | ✅ Extension sanitizes URLs and text |
+| No Shell Execution | ✅ Zig stdlib only |
+
+See [SECURITY.md](./SECURITY.md) for full security policy.
+
 ## 🔌 Related Projects
 
 | Project | GitHub | Description |

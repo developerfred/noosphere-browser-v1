@@ -1,9 +1,18 @@
 //! Noosphere Store - Simple JSON-based Knowledge Graph Storage
 //! 
-//! For MVP, uses JSON files. Can be swapped for SQLite later.
+//! For MVP, uses JSON files. Includes access control.
 
 const std = @import("std");
 const Semantic = @import("parser.zig").Semantic;
+const access = @import("access.zig");
+
+/// Security error types
+pub const StoreError = error{
+    AccessDenied,
+    InvalidPath,
+    StorageFull,
+    CorruptedData,
+};
 
 /// Page stored in the graph
 pub const Page = struct {

@@ -79,6 +79,7 @@ When P2P sync is implemented:
 - [x] Entity/Relation limits
 - [x] No shell execution
 - [x] No hardcoded credentials
+- [x] Rate limiting (src/ratelimit.zig)
+- [x] Access control (src/access.zig, src/secure_store.zig)
 - [ ] TLS certificate validation (future)
 - [ ] P2P encryption (future)
-- [ ] Rate limiting (future)
