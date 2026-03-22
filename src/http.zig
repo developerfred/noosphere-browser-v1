@@ -23,15 +23,47 @@ pub const Response = struct {
     }
 };
 
+/// Security: blocked schemes
+const BLOCKED_SCHEMES = &.{ "javascript", "data", "file", "ftp" };
+
 /// Fetch a URL and return the response
 pub fn fetch(url_str: []const u8) !Response {
     const allocator = std.heap.page_allocator;
+    
+    // SECURITY: Validate URL scheme
+    for (BLOCKED_SCHEMES) |blocked| {
+        if (std.mem.startsWith(u8, url_str, blocked ++ ":")) {
+            return error.BlockedScheme;
+        }
+    }
     
     // Parse URL
     const parsed = try parseUrl(url_str);
     defer {
         allocator.free(parsed.host);
         if (parsed.path.len > 0) allocator.free(parsed.path);
+    }
+    
+    // SECURITY: Warn on HTTP for non-localhost
+    const is_localhost = std.mem.startsWith(u8, parsed.host, "localhost") or
+        std.mem.startsWith(u8, parsed.host, "127.") or
+        std.mem.startsWith(u8, parsed.host, "192.168.") or
+        std.mem.startsWith(u8, parsed.host, "10.") or
+        std.mem.startsWith(u8, parsed.host, "172.16.") or
+        std.mem.startsWith(u8, parsed.host, "0.");
+    
+    if (!is_localhost and std.mem.eql(u8, parsed.scheme, "http")) {
+        std.log.warn("Insecure HTTP connection to {s} - consider using HTTPS", .{parsed.host});
+    }
+    
+    // SECURITY: Limit host length
+    if (parsed.host.len > 253) {
+        return error.InvalidHost;
+    }
+    
+    // SECURITY: Limit path length
+    if (parsed.path.len > 2048) {
+        return error.InvalidPath;
     }
     
     // Connect to server
