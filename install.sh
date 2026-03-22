@@ -1,6 +1,6 @@
 #!/bin/bash
-# Noosphere Browser Installer
-# Supports: Linux (x86_64, ARM), macOS (Intel, Apple Silicon), Windows
+# Noosphere Browser - Universal Installer
+# Supports: Linux, macOS, Windows, Raspberry Pi
 
 set -e
 
@@ -22,24 +22,22 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 # Detect OS
 detect_os() {
     case "$(uname -s)" in
-        Linux*)     OS="linux" ;;
-        Darwin*)    OS="macos" ;;
-        CYGWIN*|MINGW*|MSYS*) OS="windows" ;;
+        Linux*)     echo "linux" ;;
+        Darwin*)    echo "macos" ;;
+        CYGWIN*|MINGW*|MSYS*) echo="windows" ;;
         *)          error "Unsupported OS: $(uname -s)" ;;
     esac
-    echo "$OS"
 }
 
 # Detect architecture
 detect_arch() {
     case "$(uname -m)" in
-        x86_64)     ARCH="x86_64" ;;
-        aarch64|arm64) ARCH="aarch64" ;;
-        armv7l)     ARCH="armv7" ;;
-        i386|i686)  ARCH="x86" ;;
+        x86_64)     echo "x86_64" ;;
+        aarch64|arm64) echo "aarch64" ;;
+        armv7l)     echo "armv7" ;;
+        i386|i686)  echo "x86" ;;
         *)          error "Unsupported architecture: $(uname -m)" ;;
     esac
-    echo "$ARCH"
 }
 
 # Map to release filenames
@@ -48,87 +46,73 @@ get_filename() {
     local arch=$2
     
     case "$os" in
-        linux)  echo "noosphere-${arch}-linux" ;;
-        macos)  echo "noosphere-${arch}-macos" ;;
-        windows) echo "noosphere-${arch}-windows.exe" ;;
+        linux)  
+            case "$arch" in
+                x86_64) echo "noosphere-x86_64-linux" ;;
+                aarch64) echo "noosphere-aarch64-linux" ;;
+                armv7) echo "noosphere-armv7-linux" ;;
+                *) echo "" ;;
+            esac
+            ;;
+        macos)  
+            case "$arch" in
+                x86_64) echo "noosphere-x86_64-macos" ;;
+                aarch64) echo "noosphere-aarch64-macos" ;;
+                *) echo "" ;;
+            esac
+            ;;
+        windows) 
+            echo "noosphere-x86_64-windows.exe"
+            ;;
+        *)     echo "" ;;
     esac
 }
 
-# Download release
-download_release() {
+# Get download URL
+get_download_url() {
     local filename=$1
     local version=$2
     
-    log "Downloading ${filename}..."
-    
-    # Try GitHub releases first
-    local url="https://github.com/${REPO}/releases"
-    
     if [ "$version" = "latest" ]; then
-        url="${url}/download/${VERSION}"
+        echo "https://github.com/${REPO}/releases/latest/download/${filename}"
     else
-        url="${url}/download/v${VERSION}"
+        echo "https://github.com/${REPO}/releases/download/${VERSION}/${filename}"
     fi
+}
+
+# Download file
+download() {
+    local url=$1
+    local dest=$2
     
-    # Construct download URL (using GitHub API to get redirect)
-    local api_url="https://api.github.com/repos/${REPO}/releases/${VERSION}"
+    log "Downloading from $url..."
     
-    # For now, construct direct URL based on common pattern
-    local download_url="https://github.com/${REPO}/releases/download/${VERSION}/${filename}"
-    
-    # Create temp file
-    local tmpfile=$(mktemp)
-    
-    if command -v curl > /dev/null; then
-        curl -L --fail -o "$tmpfile" "$download_url" 2>/dev/null || {
-            # Fallback: try without version prefix
-            rm -f "$tmpfile"
-            tmpfile=$(mktemp)
-            curl -L --fail -o "$tmpfile" "https://github.com/${REPO}/releases/latest/download/${filename}" 2>/dev/null || {
-                rm -f "$tmpfile"
-                return 1
-            }
-        }
-    elif command -v wget > /dev/null; then
-        wget -O "$tmpfile" "$download_url" 2>/dev/null || {
-            rm -f "$tmpfile"
-            tmpfile=$(mktemp)
-            wget -O "$tmpfile" "https://github.com/${REPO}/releases/latest/download/${filename}" 2>/dev/null || {
-                rm -f "$tmpfile"
-                return 1
-            }
-        }
+    if command -v curl > /dev/null 2>&1; then
+        curl -L --fail --progress-bar -o "$dest" "$url"
+    elif command -v wget > /dev/null 2>&1; then
+        wget -O "$dest" "$url"
     else
-        error "Neither curl nor wget found. Please install one of them."
+        error "Neither curl nor wget found"
     fi
-    
-    echo "$tmpfile"
 }
 
 # Install binary
 install_binary() {
-    local tmpfile=$1
-    local filename=$2
+    local filename=$1
+    local dest="$INSTALL_DIR/noosphere"
     
-    # Create install directory
-    mkdir -p "$INSTALL_DIR"
+    [ "$os" = "windows" ] && dest="${dest}.exe"
     
-    local dest="${INSTALL_DIR}/noosphere"
-    [ "$OS" = "windows" ] && dest="${dest}.exe"
-    
-    # Check if exists and not forcing
+    # Check if exists
     if [ -f "$dest" ] && [ "$FORCE" != "true" ]; then
         warn "Noosphere already installed at $dest"
         read -p "Overwrite? [y/N] " -n 1 -r
         echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            rm -f "$tmpfile"
-            exit 0
-        fi
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
     fi
     
-    # Move to destination
-    mv "$tmpfile" "$dest"
+    mkdir -p "$INSTALL_DIR"
+    mv "$filename" "$dest"
     chmod +x "$dest"
     
     log "Installed to $dest"
@@ -145,56 +129,80 @@ add_to_path() {
         *)   shell_rc="$HOME/.profile" ;;
     esac
     
-    # Check if already in PATH
-    if [ -d "$INSTALL_DIR" ] && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
         echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> "$shell_rc"
         log "Added $INSTALL_DIR to PATH in $shell_rc"
-        log "Restart your shell or run: source $shell_rc"
+        log "Restart shell or run: source $shell_rc"
+    fi
+}
+
+# Build from source
+build_from_source() {
+    log "Building from source..."
+    
+    if command -v zig > /dev/null 2>&1; then
+        log "Using Zig..."
+        make build
+        return $?
+    elif command -v gcc > /dev/null 2>&1 || command -v clang > /dev/null 2>&1; then
+        log "Using C fallback..."
+        if [ "$os" = "windows" ]; then
+            gcc -O2 -o noosphere.exe c/main.c
+        else
+            gcc -O2 -o noosphere c/main.c
+        fi
+        return $?
+    else
+        error "No Zig or C compiler found. Please install Zig from https://ziglang.org"
     fi
 }
 
 # Main
 main() {
-    log "Noosphere Browser Installer"
-    echo
+    log "Noosphere Browser Installer v1.0"
+    echo ""
     
-    OS=$(detect_os)
-    ARCH=$(detect_arch)
+    local os=$(detect_os)
+    local arch=$(detect_arch)
     
-    log "Detected: $OS ($ARCH)"
+    log "Detected: $os ($arch)"
+    echo ""
     
-    local filename=$(get_filename "$OS" "$ARCH")
-    log "Looking for: $filename"
-    echo
+    local filename=$(get_filename "$os" "$arch")
     
-    # Check if pre-built binary exists
-    if [ "$OS" = "windows" ]; then
-        warn "Windows builds not yet available - building from source required"
-        echo "Run: zig build -freestanding -target ${ARCH}-windows-gnu"
-        exit 0
+    if [ -z "$filename" ]; then
+        warn "No pre-built binary for $os-$arch"
+        echo "Will try to build from source..."
+        build_from_source
+        exit $?
     fi
     
-    # Try to download
-    local tmpfile
-    if tmpfile=$(download_release "$filename" "$VERSION" 2>/dev/null); then
-        install_binary "$tmpfile" "$filename"
+    local download_url=$(get_download_url "$filename" "$VERSION")
+    local tmpfile=$(mktemp)
+    
+    log "Installing $filename..."
+    
+    # Try download
+    if download "$download_url" "$tmpfile"; then
+        install_binary "$tmpfile"
         add_to_path
     else
-        warn "Pre-built binary not available for $OS ($ARCH)"
-        echo
-        echo "Building from source..."
-        echo
-        echo "Dependencies:"
-        echo "  - Zig 0.13+ (https://ziglang.org)"
-        echo
-        echo "Build commands:"
-        echo "  git clone https://github.com/developerfred/noosphere-browser-v1.git"
-        echo "  cd noosphere-browser"
-        echo "  zig build -freestanding -target ${ARCH}-linux-gnu"
-        echo
+        warn "Download failed"
+        echo ""
+        echo "Options:"
+        echo "1. Build from source (requires Zig or gcc):"
+        echo "   git clone https://github.com/${REPO}.git"
+        echo "   cd noosphere-browser-v1"
+        echo "   make build"
+        echo ""
+        echo "2. Download manually:"
+        echo "   https://github.com/${REPO}/releases"
+        echo ""
+        rm -f "$tmpfile"
+        exit 1
     fi
     
-    echo
+    echo ""
     log "Done! Run 'noosphere --help' to get started."
 }
 
