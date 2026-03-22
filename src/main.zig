@@ -1,7 +1,6 @@
 //! Noosphere Browser - Semantic-native browser for agents
 //! 
-//! This is the main entry point for the Noosphere browser.
-//! Built for Raspberry Pi with minimal resource usage.
+//! For Raspberry Pi and edge devices. Pure Zig, no dependencies.
 
 const std = @import("std");
 const http = @import("http.zig");
@@ -47,7 +46,6 @@ pub fn main() !void {
                 continue;
             }
             if (std.mem.startsWith(u8, arg, "--")) {
-                // Skip unknown flags
                 continue;
             }
             url = arg;
@@ -73,45 +71,41 @@ pub fn main() !void {
             std.log.err("Query string required with --query", .{});
         }
     } else {
-        // Interactive mode
         try interactiveMode(&db);
     }
 }
 
 fn printHelp() !void {
-    const help = 
-    \\Noosphere Browser - Semantic-native browser
-    \\
-    \\Usage:
-    \\  noosphere [options] [url]
-    \\
-    \\Options:
-    \\  -f, --fetch <url>   Fetch and store a page
-    \\  -s, --server        Start HTTP server
-    \\  -g, --graph         Dump knowledge graph
-    \\  -q, --query <str>   Query the graph
-    \\  -h, --help          Show this help
-    \\  -v, --version       Show version
-    \\
-    \\Examples:
-    \\  noosphere --fetch https://example.com
-    \\  noosphere --server
-    \\  noosphere --query "AI"
-    \\
-    ;
-    try std.io.getStdOut().writeAll(help);
+    try std.io.getStdOut().writeAll(
+        \\Noosphere Browser - Semantic-native browser
+        \\
+        \\Usage:
+        \\  noosphere [options] [url]
+        \\
+        \\Options:
+        \\  -f, --fetch <url>   Fetch and store a page
+        \\  -s, --server        Start HTTP server
+        \\  -g, --graph         Dump knowledge graph
+        \\  -q, --query <str>   Query the graph
+        \\  -h, --help          Show this help
+        \\  -v, --version       Show version
+        \\
+        \\Examples:
+        \\  noosphere --fetch https://example.com
+        \\  noosphere --server
+        \\  noosphere --query "AI"
+        \\
+    );
 }
 
 fn fetchAndStore(url_str: []const u8, db: *store.Store) !void {
     std.log.info("Fetching: {s}", .{url_str});
     
-    // Fetch HTTP response
     const response = try http.fetch(url_str);
     defer response.deinit();
     
     std.log.info("Received {d} bytes", .{response.body.len});
     
-    // Parse HTML to semantic data
     const semantic = try parser.parse(response.body);
     
     std.log.info("Extracted:", .{});
@@ -120,7 +114,6 @@ fn fetchAndStore(url_str: []const u8, db: *store.Store) !void {
     std.log.info("  Entities: {d}", .{semantic.entities.len});
     std.log.info("  Relations: {d}", .{semantic.relations.len});
     
-    // Store in graph
     try db.addPage(url_str, &semantic);
     
     std.log.info("✅ Stored in knowledge graph!", .{});
@@ -128,11 +121,8 @@ fn fetchAndStore(url_str: []const u8, db: *store.Store) !void {
 
 fn startServer(db: *store.Store) !void {
     std.log.info("Starting Noosphere server on :8080", .{});
-    std.log.info("Press Ctrl+C to stop", .{});
-    
-    // TODO: Implement Phoenix-like HTTP server
-    // For now, just a placeholder
     std.log.warn("Server not yet implemented - use --fetch instead", .{});
+    _ = db;
 }
 
 fn dumpGraph(db: *store.Store) !void {
