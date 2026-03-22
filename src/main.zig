@@ -1,7 +1,8 @@
-//! Noosphere Browser - Semantic-native browser for agents
+//! Noosphere Browser v2.0 - Production Ready
 //! 
 //! For Raspberry Pi and edge devices. Pure Zig, no dependencies.
 //! Security: URL validation, rate limiting, access control
+//! Performance: <2MB binary, <128MB RAM
 
 const std = @import("std");
 const http = @import("http.zig");
@@ -9,11 +10,24 @@ const parser = @import("parser.zig");
 const store = @import("store.zig");
 const ratelimit = @import("ratelimit.zig");
 const access = @import("access.zig");
+const config = @import("config.zig");
+const metrics = @import("metrics.zig");
+const retry = @import("retry.zig");
+const archive = @import("archive.zig");
+const arxiv = @import("arxiv.zig");
+const sitemap = @import("sitemap.zig");
+const rss = @import("rss.zig");
 
 pub fn main() !void {
-    std.log.info("🌐 Noosphere Browser v0.1.0", .{});
-    std.log.info("Semantic-native browser for agents", .{});
-    std.log.info("Target: Raspberry Pi (ARM)", .{});
+    std.log.info("🌐 Noosphere Browser v2.0", .{});
+    std.log.info("Semantic-native browser for AI agents", .{});
+    std.log.info("Target: <2MB binary, <128MB RAM", .{});
+    
+    // Load config from env
+    const cfg = config.loadFromEnv(std.heap.page_allocator);
+    
+    // Initialize metrics
+    var met = metrics.MetricsCollector.init(std.heap.page_allocator);
     
     // Parse command line arguments
     const args = std.process.args();
@@ -80,23 +94,37 @@ pub fn main() !void {
 
 fn printHelp() !void {
     try std.io.getStdOut().writeAll(
-        \\Noosphere Browser - Semantic-native browser
+        \\Noosphere Browser v2.0 - Production Ready
         \\
         \\Usage:
         \\  noosphere [options] [url]
         \\
         \\Options:
-        \\  -f, --fetch <url>   Fetch and store a page
-        \\  -s, --server        Start HTTP server
-        \\  -g, --graph         Dump knowledge graph
-        \\  -q, --query <str>   Query the graph
-        \\  -h, --help          Show this help
-        \\  -v, --version       Show version
+        \\  -f, --fetch <url>     Fetch and store a page
+        \\  -s, --server          Start HTTP server
+        \\  -g, --graph           Dump knowledge graph
+        \\  -q, --query <str>     Query the graph
+        \\  -a, --arxiv <query>    Search ArXiv papers
+        \\  -m, --sitemap <domain> Discover pages via sitemap
+        \\  -r, --rss <url>        Parse RSS/Atom feed
+        \\  --archive <url>        Check Wayback Machine
+        \\  --metrics             Show performance metrics
+        \\  --health              Health check
+        \\  -h, --help            Show this help
+        \\  -v, --version         Show version
+        \\
+        \\Config:
+        \\  NOOSPHERE_DATA_DIR    Data directory
+        \\  NOOSPHERE_PORT        Server port
+        \\  NOOSPHERE_ENABLE_P2P  Enable P2P (true/false)
+        \\  NOOSPHERE_RATE_LIMIT_SEC  Requests per second
         \\
         \\Examples:
         \\  noosphere --fetch https://example.com
+        \\  noosphere --arxiv "machine learning transformers"
+        \\  noosphere --sitemap example.com
         \\  noosphere --server
-        \\  noosphere --query "AI"
+        \\  noosphere --query "AI agents"
         \\
     );
 }
