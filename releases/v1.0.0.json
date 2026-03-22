@@ -1,0 +1,7 @@
+{
+  "name": "Noosphere Browser v1.0.0",
+  "tag_name": "v1.0.0",
+  "draft": false,
+  "prerelease": true,
+  "body": "## 🔮 Noosphere Browser v1.0.0-alpha\n\n### What's New\n- Initial release\n- Semantic HTML parsing\n- Entity extraction (persons, orgs, locations, URLs, dates)\n- Relation extraction (triples)\n- Markdown output\n- JSON storage\n- Multi-platform (Linux, macOS, Windows, Raspberry Pi)\n\n### Installation\n\n```bash\n# Quick install\ncurl -fsSL https://git.io/noosphere-install | bash\n\n# Or download binary for your platform below\n```\n\n### Platforms\n- 🐧 Linux x86_64\n- 🐧 Linux ARM64 (Raspberry Pi 4)\n- 🐧 Linux ARMv7 (Raspberry Pi 3)\n- 🍎 macOS Intel\n- 🍎 macOS Apple Silicon\n- 🪟 Windows x86_64\n\n### For AI Agents\nSee [AGENTS.md](https://github.com/developerfred/noosphere-browser-v1/blob/master/AGENTS.md) for agent integration guide.\n\n### Build from Source\n```bash\ngit clone https://github.com/developerfred/noosphere-browser-v1\ncd noosphere-browser-v1\nmake build\n```\n\n⚠️ **Note**: Pre-built binaries coming soon. For now, build from source (requires Zig 0.13+)."
+}

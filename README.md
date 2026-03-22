@@ -4,28 +4,29 @@
 
 **Multi-platform**: Linux (x86_64, ARM), macOS (Intel, Apple Silicon), Windows
 
-## Vision
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Raspberry%20Pi-yellow.svg)](https://github.com/developerfred/noosphere-browser-v1)
 
-Noosphere transforms the web from visual pages into a **knowledge graph**. Every page becomes structured data, every link becomes a relation, every fact becomes queryable.
+## 🔮 What is Noosphere?
 
-Built to run on edge devices — **$35 Raspberry Pi** included.
+Noosphere transforms the web from visual pages into a **knowledge graph**. Instead of rendering HTML to pixels, it extracts:
 
-## Quick Start
+- **Entities** (persons, organizations, locations, URLs, dates, numbers)
+- **Relations** (subject-predicate-object triples)
+- **Content** (clean Markdown)
 
-### Download Pre-built Binary
+## 🚀 Quick Start
+
+### Install (Linux/macOS)
 
 ```bash
-# Linux/macOS
 curl -fsSL https://raw.githubusercontent.com/developerfred/noosphere-browser-v1/master/install.sh | bash
-
-# Or manually download from Releases:
-# https://github.com/developerfred/noosphere-browser-v1/releases
 ```
 
-### Build from Source
+### Or Build from Source
 
 **Requirements:**
-- Zig 0.13+ ([Install](https://ziglang.org/download/))
+- [Zig 0.13+](https://ziglang.org/download/)
 
 ```bash
 # Clone
@@ -35,31 +36,14 @@ cd noosphere-browser-v1
 # Build for current platform
 make build
 
-# Or build for specific platform
-make build-linux-x86      # Linux x86_64
-make build-linux-arm64    # Linux ARM64 (Raspberry Pi 4)
-make build-linux-armv7    # Linux ARMv7 (Raspberry Pi 3)
-make build-macos-intel    # macOS Intel
-make build-macos-apple    # macOS Apple Silicon
-make build-windows        # Windows
+# Build for Raspberry Pi
+make build-linux-arm64
 
 # Build ALL platforms
 make build-all
 ```
 
-### Installation
-
-```bash
-# System-wide (requires sudo)
-sudo make install
-
-# User-local (adds to ~/.local/bin)
-mkdir -p ~/.local/bin
-cp zig-out/bin/noosphere ~/.local/bin/
-export PATH=$PATH:$HOME/.local/bin
-```
-
-## Usage
+### Usage
 
 ```bash
 # Show help
@@ -68,121 +52,114 @@ noosphere --help
 # Fetch and store a page
 noosphere --fetch https://example.com
 
-# Start interactive mode
-noosphere
-
 # Query the knowledge graph
 noosphere --query "Albert Einstein"
 
 # Show knowledge graph
 noosphere --graph
 
-# Server mode (coming soon)
-noosphere --server
+# Interactive mode
+noosphere
 ```
 
-## Supported Platforms
+## 📦 Pre-built Binaries
 
-| Platform | Architecture | Status |
-|----------|--------------|--------|
-| **Linux** | x86_64 | ✅ Built |
-| **Linux** | aarch64 (Pi 4) | ✅ Built |
-| **Linux** | armv7 (Pi 3) | ✅ Built |
-| **macOS** | Intel | ✅ Built |
-| **macOS** | Apple Silicon | ✅ Built |
-| **Windows** | x86_64 | ✅ Built |
+Coming soon! For now, [build from source](#build-from-source).
 
-## Architecture
+### Supported Platforms
+
+| Platform | Architecture | Build Command |
+|----------|--------------|---------------|
+| Linux | x86_64 | `make build-linux-x86` |
+| Linux | ARM64 (Pi 4) | `make build-linux-arm64` |
+| Linux | ARMv7 (Pi 3) | `make build-linux-armv7` |
+| macOS | Intel | `make build-macos-intel` |
+| macOS | Apple Silicon | `make build-macos-apple` |
+| Windows | x86_64 | `make build-windows` |
+
+## 🤖 For AI Agents
+
+See [AGENTS.md](./AGENTS.md) for complete agent integration guide.
+
+**Quick agent install:**
+```bash
+curl -fsSL https://git.io/noosphere-install | bash
+```
+
+**Agent usage:**
+```bash
+# Fetch page → extract knowledge
+noosphere --fetch <url>
+
+# Query stored knowledge
+noosphere --query <search-term>
+```
+
+**Output format:**
+```json
+{
+  "title": "Albert Einstein",
+  "entities": [
+    {"type": "PERSON", "text": "Albert Einstein", "count": 5}
+  ],
+  "relations": [
+    {"type": "born_in", "from": "Albert Einstein", "to": "Ulm"}
+  ]
+}
+```
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         NOOSPHERE                             │
 │                                                              │
 │   ┌──────────┐   ┌───────────┐   ┌────────────────────┐    │
-│   │   ZIG    │   │   ELIXIR  │   │   SEMANTIC ENGINE  │    │
-│   │  HTTP/   │──▶│  Phoenix  │──▶│  HTML → Triples    │    │
-│   │  HTML    │   │  Channels │   │  Knowledge Graph   │    │
+│   │   ZIG    │   │  Parser   │   │   Semantic Engine  │    │
+│   │  HTTP/   │──▶│  HTML→MD  │──▶│  Entities+Relations│    │
+│   │  Client  │   │           │   │                    │    │
 │   └──────────┘   └───────────┘   └────────────────────┘    │
 │         │               │                    │               │
 │         └───────────────┴────────────────────┘               │
 │                         │                                    │
 │              ┌──────────┴──────────┐                        │
-│              │   HYPERGRAPH STORE   │                        │
-│              │   (embedded SQLite) │                        │
-│              └─────────────────────┘                        │
-│                                                              │
-│   💾 Embedded   ⚡ Fast   🔗 P2P-ready                     │
+│              │   Knowledge Graph     │                        │
+│              │   (JSON/SQLite)      │                        │
+│              └──────────────────────┘                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Key Concepts
+## 📁 Project Structure
 
-### Semantic Snapshots
-Every page is parsed into **semantic triples**:
 ```
-(subject) ──[predicate]──▶ (object)
+noosphere-browser/
+├── src/
+│   ├── main.zig      # CLI entry point
+│   ├── http.zig      # HTTP client
+│   ├── parser.zig    # HTML → Markdown + entities
+│   └── store.zig     # Knowledge graph storage
+├── Makefile          # Build system
+├── install.sh         # Installer script
+├── AGENTS.md         # AI agent documentation
+├── README.md         # This file
+└── LICENSE
 ```
 
-Example:
-```
-Wikipedia:Albert_Einstein ──[born_in]──▶ Ulm
-Wikipedia:Albert_Einstein ──[occupation]──▶ physicist
-Wikipedia:Albert_Einstein ──[worked_with]──▶ Wikipedia:Niels_Bohr
-```
+## 🔌 Related Projects
 
-### Hypergraph vs DOM
-| DOM (Traditional) | Hypergraph (Noosphere) |
-|-------------------|------------------------|
-| Tree structure | Graph (any-to-any) |
-| Render to pixels | Extract knowledge |
-| Humans read | Agents query |
-| Cache HTML | Cache semantics |
+| Project | GitHub | Description |
+|---------|--------|-------------|
+| **Extension** | [noosphere-extension-v1](https://github.com/developerfred/noosphere-extension-v1) | Chrome/Firefox extension |
+| **Landing** | [noosphere-landing](https://github.com/developerfred/noosphere-landing) | Landing page |
 
-## Tech Stack
+## 📄 License
 
-- **Zig** — HTTP engine, HTML parser, memory-safe, < 5MB binary
-- **Elixir** — Phoenix channels for P2P (future)
-- **SQLite** — Embedded hypergraph storage (WAL mode)
-- **Nanomsg** — Gossip protocol for Pi-to-Pi mesh (future)
-
-## Performance Targets
-
-| Metric | Target | Hardware |
-|--------|--------|----------|
-| Memory | < 512MB | Pi 4 (1-8GB) |
-| Binary size | < 5MB | - |
-| Page parse | < 100ms | Pi 4 |
-| Cold start | < 2s | Pi 4 |
-| Power | 3-8W | - |
-
-## Features
-
-- [x] **HTTP Client** — Pure Zig, no libcurl
-- [x] **HTML Parser** — HTML → Markdown + triples
-- [x] **Entity Extraction** — Persons, organizations, URLs, dates
-- [x] **JSON Storage** — Embedded, no server
-- [ ] **SQLite Storage** — Full-text search
-- [ ] **P2P Sync** — Share knowledge with other nodes
-- [ ] **Vector Search** — Find semantically similar content
-- [ ] **Phoenix Server** — HTTP API + WebSocket
-- [ ] **Cross-compile** — Pre-built binaries for all platforms
-
-## Contributing
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -am 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing`)
-5. Open a Pull Request
-
-## License
-
-Apache 2.0 — see [LICENSE](LICENSE)
+Apache 2.0 - see [LICENSE](LICENSE)
 
 ---
 
 **The web is knowledge. Let's treat it that way.**
 
-🔗 [GitHub](https://github.com/developerfred/noosphere-browser-v1) | 
-🔗 [Codeberg](https://codeberg.org/codingsh/noosphere-browser) | 
-🔗 [Extension](https://github.com/developerfred/noosphere-extension-v1)
+🌐 [GitHub](https://github.com/developerfred/noosphere-browser-v1) | 
+📖 [Docs](https://github.com/developerfred/noosphere-browser-v1/blob/master/README.md) |
+🤖 [For Agents](https://github.com/developerfred/noosphere-browser-v1/blob/master/AGENTS.md)
